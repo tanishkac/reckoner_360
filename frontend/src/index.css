@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Add this only if you want the dark background to cover the whole page */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: #0f172a; /* matches slate-900 */
+}
