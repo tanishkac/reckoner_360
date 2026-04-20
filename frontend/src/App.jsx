@@ -7,6 +7,8 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
 import regionsData from './regions.json'; 
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { scaleLinear } from "d3-scale";
 
 // --- SUB-COMPONENT: STAT CARD ---
 const StatCard = ({ title, value, subText, icon, trend, isNegative }) => (
@@ -299,6 +301,144 @@ const NavItem = ({ icon, label, active, onClick }) => (
   </button>
 );
 
+const HeatmapPage = () => {
+  const [data, setData] = useState([]);
+  const [hoveredRegion, setHoveredRegion] = useState(null);
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/heatmap_data')
+      .then(res => res.json())
+      .then(json => setData(json));
+  }, []);
+
+  // --- 1. THE TRANSLATION DICTIONARY ---
+  // This bridges the gap between GeoJSON "Codes" and CSV "Names"
+  const wardToRegionMap = {
+    "A": "Cuffe Parade",
+    "B": "Masjid Bunder",
+    "C": "Marine Lines",
+    "D": "Malabar Hill",
+    "E": "Byculla",
+    "H/E": "Santacruz East",
+    "H/W": "Bandra West",
+    "K/E": "Andheri East",
+    "K/W": "Andheri West",
+    "P/S": "Goregaon",
+    "P/N": "Malad",
+    "R/S": "Kandivali",
+    "R/C": "Borivali",
+    "R/N": "Dahisar",
+    "L": "Kurla",
+    "M/E": "Govandi",
+    "M/W": "Chembur",
+    "N": "Ghatkopar",
+    "S": "Powai",
+    "T": "Mulund",
+    "F/N": "Matunga",
+    "F/S": "Parel",
+    "G/N": "Dadar",
+    "G/S": "Worli"
+  };
+
+  // COLOR SCALE: Blue (Safe/Optimized) -> Red (High Revenue Leakage)
+  const colorScale = scaleLinear()
+    .domain([0, 15, 30])
+    .range(["#3b82f6", "#f59e0b", "#ef4444"]);
+
+  return (
+    <div className="animate-in fade-in duration-1000">
+      <div className="mb-8">
+        <h1 className="text-4xl font-black text-white italic uppercase tracking-tighter">Mumbai Revenue Leakage</h1>
+        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.4em]">Geospatial ML Analysis • Policy Engine Alpha</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+        
+        {/* THE MAP CARD */}
+        <div className="lg:col-span-3 bg-slate-800/20 rounded-[3rem] border border-slate-800 p-6 relative overflow-hidden flex items-center justify-center">
+          <ComposableMap
+            projection="geoMercator"
+            projectionConfig={{
+              center: [72.8777, 19.0760], 
+              scale: 55000 
+            }}
+            className="w-full h-[650px]"
+          >
+            <Geographies geography="/mumbai_wards.json">
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  // --- 2. MATCHING LOGIC ---
+                  const wardCode = geo.properties.name || geo.properties.ward_name;
+                  
+                  // Translate the code (e.g., "R/S") to CSV name (e.g., "Kandivali")
+                  const csvRegionName = wardToRegionMap[wardCode] || wardCode;
+
+                  // Find the data from the API response
+                  const regionData = data.find(d => d.region.toLowerCase() === csvRegionName.toLowerCase());
+
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      onMouseEnter={() => setHoveredRegion(regionData || { region: csvRegionName, leakage_score: 0 })}
+                      onMouseLeave={() => setHoveredRegion(null)}
+                      style={{
+                        default: {
+                          // Apply heat color if data exists, otherwise default dark slate
+                          fill: regionData ? colorScale(regionData.leakage_score) : "#1e293b",
+                          stroke: "#0f172a",
+                          strokeWidth: 0.5,
+                          outline: "none"
+                        },
+                        hover: {
+                          fill: "#fff",
+                          stroke: "#3b82f6",
+                          strokeWidth: 2,
+                          cursor: "pointer",
+                          outline: "none"
+                        }
+                      }}
+                    />
+                  );
+                })
+              }
+            </Geographies>
+          </ComposableMap>
+
+          {/* FLOATING DATA OVERLAY */}
+          {hoveredRegion && (
+            <div className="absolute top-10 right-10 bg-slate-900/80 backdrop-blur-xl p-6 rounded-[2rem] border border-slate-700 shadow-2xl animate-in zoom-in-95">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{hoveredRegion.region}</p>
+              <h2 className="text-4xl font-black text-white italic">+{hoveredRegion.leakage_score}%</h2>
+              <p className="text-[9px] font-bold text-red-500 uppercase mt-2">Revenue Potential Unlocked</p>
+            </div>
+          )}
+        </div>
+
+        {/* SIDEBAR: LEADERBOARD */}
+        <div className="lg:col-span-2 space-y-4">
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">Priority Zones</h3>
+          <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
+            {data.map((item, idx) => (
+              <div key={idx} className="bg-slate-800/40 p-5 rounded-3xl border border-slate-800 flex justify-between items-center group hover:border-blue-500/30 transition-all">
+                <div>
+                  <span className="text-[9px] font-black text-slate-600 block">RANK {idx + 1}</span>
+                  <span className="text-white font-black italic uppercase text-sm">{item.region}</span>
+                </div>
+                <div className="text-right">
+                  <span className={`text-xl font-black ${item.leakage_score > 15 ? 'text-red-500' : 'text-blue-500'}`}>
+                    {item.leakage_score}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 export default function App() {
   const [activePage, setActivePage] = useState('predictor');
@@ -329,12 +469,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto">
           {activePage === 'predictor' && <PredictorPage />}
           {activePage === 'simulation' && <SimulationPage />}
-          {activePage === 'heatmaps' && (
-            <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-[3rem] p-20 opacity-30">
-              <Map size={60} className="mb-4" />
-              <p className="font-black uppercase tracking-[0.3em]">Revenue Heatmaps: Initializing GeoJSON...</p>
-            </div>
-          )}
+          {activePage === 'heatmaps' && <HeatmapPage />}
         </div>
       </main>
     </div>

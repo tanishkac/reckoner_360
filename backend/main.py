@@ -144,3 +144,38 @@ def optimize_endpoint(region_name: str):
                 best_hike = h
                 
     return {"optimal_hike": float(round(best_hike, 2))}
+
+@app.get("/heatmap_data")
+def get_heatmap_data():
+    """
+    Calculates the 'Inconsistency Score' for every region.
+    High Score = Government is charging way below market value.
+    """
+    heatmap_results = []
+    unique_regions = df['region'].unique()
+
+    for region in unique_regions:
+        region_df = df[df['region'] == region]
+        
+        # Calculate Average Actual vs. Predicted
+        # We'll use the 'final_rrr_per_sqm' as the baseline government rate
+        avg_actual = region_df['final_rrr_per_sqm'].mean()
+        
+        # Prepare features for batch prediction
+        X = region_df[['region_encoded', 'area_sqm', 'status_Under Construction', 'age_Resale', 'floor_level', 'bhk']]
+        predictions = model.predict(X)
+        avg_predicted = predictions.mean()
+        
+        # Calculate Leakage Percentage
+        leakage = ((avg_predicted - avg_actual) / avg_actual) * 100
+        
+        heatmap_results.append({
+            "region": region,
+            "actual": round(avg_actual, 2),
+            "predicted": round(avg_predicted, 2),
+            "leakage_score": round(leakage, 2),
+            # Add static coordinates for Mumbai regions (or use a mapping dict)
+            "intensity": min(max(leakage / 20, 0), 1) # Normalize for the UI
+        })
+        
+    return sorted(heatmap_results, key=lambda x: x['leakage_score'], reverse=True)
