@@ -27,7 +27,6 @@ const StatCard = ({ title, value, subText, icon, trend, isNegative }) => (
   </div>
 );
 
-// --- PAGE: RRR PREDICTOR (STAYS AS IS) ---
 const PredictorPage = () => {
   const [formData, setFormData] = useState({
     region_id: regionsData[0]?.region_encoded || 8,
@@ -40,6 +39,7 @@ const PredictorPage = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   const handlePredict = async () => {
     setLoading(true);
@@ -66,6 +66,7 @@ const PredictorPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* INPUT PANEL */}
         <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700 backdrop-blur-sm h-fit shadow-2xl">
           <div className="space-y-6">
             <div>
@@ -73,7 +74,7 @@ const PredictorPage = () => {
               <select 
                 value={formData.region_id}
                 onChange={(e) => setFormData({...formData, region_id: e.target.value})}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 {regionsData.map((reg) => (
                   <option key={reg.region_encoded} value={reg.region_encoded}>{reg.region}</option>
@@ -97,52 +98,109 @@ const PredictorPage = () => {
             <div className="flex gap-4 p-4 bg-slate-900/50 rounded-2xl border border-slate-700">
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input type="checkbox" checked={formData.uc} onChange={(e) => setFormData({...formData, uc: e.target.checked})} className="w-4 h-4 accent-blue-500" />
-                <span className="text-[10px] text-slate-400 font-black group-hover:text-white transition-colors uppercase">UC</span>
+                <span className="text-[10px] text-slate-400 font-black uppercase">UC</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input type="checkbox" checked={formData.resale} onChange={(e) => setFormData({...formData, resale: e.target.checked})} className="w-4 h-4 accent-blue-500" />
-                <span className="text-[10px] text-slate-400 font-black group-hover:text-white transition-colors uppercase">Resale</span>
+                <span className="text-[10px] text-slate-400 font-black uppercase">Resale</span>
               </label>
             </div>
-            <button onClick={handlePredict} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white py-4 rounded-2xl font-black transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2">
+            <button onClick={handlePredict} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition-all active:scale-95">
               {loading ? "PROCESSING..." : <><Search size={18} /> PREDICT RATE</>}
             </button>
             {error && <div className="flex items-center gap-2 text-red-400 text-[10px] font-bold uppercase mt-2"><AlertCircle size={14} /> {error}</div>}
           </div>
         </div>
 
+        {/* RESULTS PANEL */}
         <div className="lg:col-span-2 space-y-6">
           {result ? (
             <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500">
-              <div className="bg-slate-800 p-10 rounded-[2.5rem] border-l-[12px] border-blue-500 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5"><Building2 size={160} /></div>
-                <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Estimated Fair Market RRR/sqm</p>
-                <h2 className="text-8xl font-black text-white mt-2 italic tracking-tighter">₹{result.predicted_rrr?.toLocaleString()}</h2>
-                <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                  <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">Model Accuracy 89.3%</span>
+              
+              {/* TOP CARD: TOTAL COST */}
+              <div className="bg-slate-800 p-10 rounded-[2.5rem] border-l-[12px] border-emerald-500 shadow-2xl relative overflow-hidden">
+                
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Total Acquisition Cost</p>
+                <h2 className="text-7xl font-black text-white mt-2 italic tracking-tighter">₹{result.total_acquisition_cost?.toLocaleString()}</h2>
+                
+                {/* RATE INFO STRIP */}
+                <div className="mt-6 flex gap-6 border-t border-slate-700/50 pt-6">
+                  <div>
+                    <p className="text-[9px] font-black text-slate-500 uppercase">Predicted RRR/sqm</p>
+                    <p className="text-xl font-black text-blue-400 italic">₹{result.predicted_rrr?.toLocaleString()}</p>
+                  </div>
+                  <div className="h-10 w-px bg-slate-700/50"></div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-500 uppercase">Location Base</p>
+                    <p className="text-xl font-black text-white italic">₹{result.rate_breakdown.regional_base?.toLocaleString()}</p>
+                  </div>
+                  <div className="h-10 w-px bg-slate-700/50"></div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-500 uppercase">Structural Premium</p>
+                    <p className="text-xl font-black text-white italic">₹{result.rate_breakdown.structural_premium?.toLocaleString()}</p>
+                  </div>
                 </div>
               </div>
-              <div className="bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 shadow-xl">
-                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-8 flex items-center gap-2"><Layers size={18} className="text-blue-500" /> Valuation Breakdown</h3>
-                 <div className="space-y-10">
-                   {result.breakdown?.map((item, i) => (
-                     <div key={i}>
-                        <div className="flex justify-between text-[11px] font-black uppercase tracking-tighter mb-3">
-                          <span className="text-slate-400">{item.label}</span>
-                          <span className="text-white font-mono text-sm">₹{item.value.toLocaleString()}</span>
+
+              
+              {/* BOTTOM CARD: INTERACTIVE BREAKDOWN */}
+              <div className="bg-slate-800 rounded-[2.5rem] border border-slate-700 shadow-xl overflow-hidden transition-all duration-500">
+                
+                {/* CLICKABLE HEADER */}
+                <button 
+                  onClick={() => setShowBreakdown(!showBreakdown)}
+                  className="w-full p-8 flex items-center justify-between group hover:bg-slate-700/30 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg transition-colors ${showBreakdown ? 'bg-blue-600 text-white' : 'bg-slate-900 text-blue-500'}`}>
+                      <Layers size={20} />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Transaction Breakdown</h3>
+                      <p className="text-[9px] text-slate-600 font-bold uppercase mt-1">
+                        {showBreakdown ? 'Click to collapse details' : 'Click to view stamp duty & fees'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* ANGLE ICON: ROTATES ON CLICK */}
+                  <div className={`transition-transform duration-300 ${showBreakdown ? 'rotate-180' : 'rotate-0'}`}>
+                    <div className="p-2 bg-slate-900 rounded-full text-slate-500 group-hover:text-white">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                </button>
+
+                {/* COLLAPSIBLE CONTENT */}
+                <div className={`transition-all duration-500 ease-in-out ${showBreakdown ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
+                  <div className="p-8 pt-0 space-y-10 border-t border-slate-700/30">
+                    <div className="mt-8 space-y-10">
+                      {result.breakdown?.map((item, i) => (
+                        <div key={i} className="animate-in fade-in slide-in-from-top-4 duration-500" style={{ transitionDelay: `${i * 100}ms` }}>
+                          <div className="flex justify-between text-[11px] font-black uppercase tracking-tighter mb-1">
+                            <span className="text-slate-400">{item.label}</span>
+                            <span className="text-white font-mono text-sm">₹{item.value.toLocaleString()}</span>
+                          </div>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase mb-3 tracking-widest">{item.subtext}</p>
+                          <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-700/50">
+                            <div 
+                              className="h-full bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all duration-1000" 
+                              style={{ width: `${(item.value / result.total_acquisition_cost) * 100}%` }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-700/50">
-                          <div className="h-full bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-1000" style={{ width: `${(item.value / result.predicted_rrr) * 100}%` }}></div>
-                        </div>
-                     </div>
-                   ))}
-                 </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
             <div className="h-full border-2 border-dashed border-slate-800 rounded-[2.5rem] flex flex-col items-center justify-center p-20 text-slate-700 text-center">
-              <LayoutDashboard size={80} className="mb-6 opacity-10" /><p className="font-black text-xs uppercase tracking-[0.3em] opacity-30 max-w-xs leading-loose">System Initialized.<br/>Please provide property parameters to start the ML engine.</p>
+              <LayoutDashboard size={80} className="mb-6 opacity-10" />
+              <p className="font-black text-xs uppercase tracking-[0.3em] opacity-30 max-w-xs leading-loose">
+                System Standby.<br/>Waiting for property parameters.
+              </p>
             </div>
           )}
         </div>
