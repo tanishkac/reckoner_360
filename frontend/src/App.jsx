@@ -254,12 +254,6 @@ const SimulationPage = () => {
           <h1 className="text-3xl font-black text-white italic tracking-tight uppercase">Decision Suite</h1>
           <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Revenue Optimization & Stress Testing</p>
         </div>
-        <button 
-          onClick={handleOptimize}
-          className="flex items-center gap-3 bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-blue-600/20 active:scale-95"
-        >
-          <Brain size={20} fill="white" /> AI Recommendation
-        </button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
